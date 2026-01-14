@@ -1,0 +1,7 @@
+mlflow[databricks]>=3.5.0
+openai
+dspy
+databricks-openai
+backoff
+uv
+databricks-agents
