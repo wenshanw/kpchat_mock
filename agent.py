@@ -18,6 +18,7 @@ from databricks.sdk import WorkspaceClient
 from databricks_openai import UCFunctionToolkit, VectorSearchRetrieverTool
 from mlflow.entities import SpanType
 from mlflow.pyfunc import ResponsesAgent
+
 from mlflow.types.responses import (
     ResponsesAgentRequest,
     ResponsesAgentResponse,
@@ -30,9 +31,6 @@ from pydantic import BaseModel
 from unitycatalog.ai.core.base import get_uc_function_client
 
 
-# Define your LLM endpoint
-LLM_ENDPOINT_NAME = "gpt-4o-mini"
-
-# Load prompt
-SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/rai.rai_prompts.kpchat_system/4")
+# Setup OpenAI
+client = OpenAI()
 
