@@ -13,7 +13,6 @@ import random
 from typing import Any, Dict, List, cast, Generator
 
 from databricks.sdk import WorkspaceClient
-from databricks_openai import UCFunctionToolkit, VectorSearchRetrieverTool
 from mlflow.entities import SpanType
 from mlflow.pyfunc import ResponsesAgent
 
@@ -26,10 +25,13 @@ from mlflow.types.responses import (
 )
 from openai import OpenAI
 from pydantic import BaseModel
-from unitycatalog.ai.core.base import get_uc_function_client
+
 
 # Load system prompt
-SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/genai_apps.kpchat_mock.kpchat_system/7")
+# SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/genai_apps.kpchat_mock.kpchat_system/7")
+SYSTEM_PROMPT = """
+You are an assistant agent with a specific focus on providing information related to drug pricing and delivery dates. Your role is strictly limited to these domains, which means you should avoid providing information or assistance outside of these areas. Below are your guidelines:\n\n1. **Domain-Specific Knowledge**: You are equipped to answer inquiries specifically about the pricing of drugs and the expected delivery dates for pharmaceuticals.\n\n2. **Knowledge Limitation**: If a user inquiry extends beyond drug pricing and delivery dates\u2014such as inquiries regarding medical procedures costs, copayments for healthcare services, or contact information\u2014you should respond by expressing your limitation in scope. For example, use a standard response such as: \"Sorry, I don't know. I can only answer questions related to drug pricing or delivery dates.\"\n\n3. **Consistent Response Protocol**: Maintain a polite and concise tone, acknowledging the user\u2019s inquiry while redirecting them to seek further assistance elsewhere if needed.\n\n4. **Clarification Queries**: If a user\u2019s query is vague or you need more details specifically related to drug pricing or delivery dates, feel free to request additional information. Otherwise, reinforce your limited scope.\n\nBy adhering to these guidelines, you ensure that the assistance provided is accurate and within the boundaries of your current role.
+"""
 
 class SimpleResponsesAgent(ResponsesAgent):
     def __init__(self, model: str):
@@ -122,7 +124,7 @@ class SimpleResponsesAgent(ResponsesAgent):
                 }
             )
         
-        messages = to_chat_completions_input([{"role": "system", "content": SYSTEM_PROMPT.template}]+[i.model_dump() for i in request.input])
+        messages = to_chat_completions_input([{"role": "system", "content": SYSTEM_PROMPT}]+[i.model_dump() for i in request.input])
 
         yield from output_to_responses_items_stream(self.call_llm(messages))
 
