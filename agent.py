@@ -28,6 +28,8 @@ from openai import OpenAI
 from pydantic import BaseModel
 from unitycatalog.ai.core.base import get_uc_function_client
 
+# Load system prompt
+SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/genai_apps.kpchat_mock.kpchat_system/6")
 
 class SimpleResponsesAgent(ResponsesAgent):
     def __init__(self, model: str):
@@ -35,7 +37,7 @@ class SimpleResponsesAgent(ResponsesAgent):
         self.model = model
 
     def call_llm(self, messages):
-        for chunk in client.chat.completions.create(
+        for chunk in self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             stream=True,
@@ -43,6 +45,19 @@ class SimpleResponsesAgent(ResponsesAgent):
             yield chunk.to_dict()
 
     def predict(self, request: ResponsesAgentRequest):
+        session_id = None
+        if request.custom_inputs and "session_id" in request.custom_inputs:
+            session_id = request.custom_inputs.get("session_id")
+        elif request.context and request.context.conversation_id:
+            session_id = request.context.conversation_id
+
+        if session_id:
+            mlflow.update_current_trace(
+                metadata={
+                    "mlflow.trace.session": session_id,
+                }
+            )
+
         outputs = [
             event.item
             for event in self.predict_stream(request)
@@ -53,11 +68,24 @@ class SimpleResponsesAgent(ResponsesAgent):
         )
 
     def predict_stream(self, request: ResponsesAgentRequest):
-        messages = to_chat_completions_input([i.model_dump() for i in request.input])
+        session_id = None
+        if request.custom_inputs and "session_id" in request.custom_inputs:
+            session_id = request.custom_inputs.get("session_id")
+        elif request.context and request.context.conversation_id:
+            session_id = request.context.conversation_id
+
+        if session_id:
+            mlflow.update_current_trace(
+                metadata={
+                    "mlflow.trace.session": session_id,
+                }
+            )
+        
+        messages = to_chat_completions_input([{"role": "system", "content": SYSTEM_PROMPT.template}]+[i.model_dump() for i in request.input])
 
         yield from output_to_responses_items_stream(self.call_llm(messages))
 
 
 mlflow.openai.autolog()
-agent = SimpleResponsesAgent()
+agent = SimpleResponsesAgent(model="gpt-4o-mini")
 mlflow.models.set_model(agent)
