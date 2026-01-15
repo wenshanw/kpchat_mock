@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from unitycatalog.ai.core.base import get_uc_function_client
 
 # Load system prompt
-SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/genai_apps.kpchat_mock.kpchat_system/6")
+SYSTEM_PROMPT = mlflow.genai.load_prompt("prompts:/genai_apps.kpchat_mock.kpchat_system/7")
 
 class SimpleResponsesAgent(ResponsesAgent):
     def __init__(self, model: str):
@@ -49,14 +49,41 @@ class SimpleResponsesAgent(ResponsesAgent):
         offset = random.randint(0, max_days_ahead - 1)
 
         return start + timedelta(days=offset)
+    
 
     def call_llm(self, messages):
+        # Mock some tool calls based on the user's question
+        user_message = messages[-1]["content"].lower()
+        tool_results = []
+
+        if "cost" in user_message or "price" in user_message or "how much" in user_message:
+            price = self.get_drug_price("MiraLAX")
+            tool_results.append(f"Price: {price}")
+
+        if "deliver" in user_message or "receive" in user_message:
+            delivery_date = self.check_delivery_date("MiraLAX", "Lucy")
+            tool_results.append(f"Delivery date: {delivery_date}")
+
+        messages_for_llm = [
+            # {
+            #     "role": "system",
+            #     "content": prompt.format(inputs=user_message),
+            # },
+            *messages,
+        ]
+
+        if tool_results:
+            messages_for_llm.append(
+                {"role": "system", "content": f"Tool results: {', '.join(tool_results)}"}
+            )
+
         for chunk in self.client.chat.completions.create(
             model=self.model,
-            messages=messages,
+            messages=cast(Any, messages_for_llm),
             stream=True,
         ):
             yield chunk.to_dict()
+
 
     def predict(self, request: ResponsesAgentRequest):
         session_id = None
