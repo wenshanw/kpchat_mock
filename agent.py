@@ -36,6 +36,20 @@ class SimpleResponsesAgent(ResponsesAgent):
         self.client = OpenAI()
         self.model = model
 
+
+    def get_drug_price(self, drug_name: str) -> str:
+        """Mock tool to get drug pricing."""
+        return f"${15.99}"
+    
+
+    def check_delivery_date(self, drug_name: str, user_name: str) -> str:
+        """Mock tool to check delivery date."""
+        max_days_ahead = 100
+        start = date.today() + timedelta(days=1)
+        offset = random.randint(0, max_days_ahead - 1)
+
+        return start + timedelta(days=offset)
+
     def call_llm(self, messages):
         for chunk in self.client.chat.completions.create(
             model=self.model,
